@@ -14,6 +14,10 @@ CFLAGS = -g -std=c99 -pedantic -Wall -O0 ${INCS} ${CPPFLAGS}
 LDFLAGS = -g ${LIBS}
 CC = cc
 
+ifeq ($(BATTERY),1)
+	CFLAGS+=-DBATTERY
+endif
+
 all: $(NAME)
 
 $(NAME): $(OBJECTS)
@@ -22,10 +26,7 @@ $(NAME): $(OBJECTS)
 $(OBJECTS): $(SOURCES) $(HEADERS)
 	$(CC) $(CFLAGS) -c $(SOURCES)
 
-run: $(NAME)
-	./$(NAME)
-
 clean:
-	rm -f $(OBJECTS) $(NAME)
+	rm -f $(OBJECTS)
 
 .PHONY: clean
