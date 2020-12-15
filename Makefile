@@ -10,8 +10,8 @@ X11LIB = /usr/X11R6/lib
 INCS = -I. -I/usr/include -I${X11INC}
 LIBS = -L/usr/lib -lc -L${X11LIB} -lX11
 
-CFLAGS = -g -std=c99 -pedantic -Wall -O0 ${INCS} ${CPPFLAGS}
-LDFLAGS = -g ${LIBS}
+CFLAGS = -std=c99 -pedantic -Wall -Os ${INCS}
+LDFLAGS = ${LIBS}
 CC = cc
 
 ifeq ($(BATTERY),1)
