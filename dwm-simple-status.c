@@ -92,10 +92,10 @@ int main(void)
 #ifdef BATTERY
         get_datetime(datetime, 1 << 7);
         get_battery(battery, (1 << 7) + 2);
-        snprintf(status, 1 << 9, "B: %s | %s", battery, datetime);
+        snprintf(status, 1 << 9, " %s | %s", battery, datetime);
 #else
         get_datetime(datetime, 1 << 7);
-        snprintf(status, 1 << 9, "%s", datetime);
+        snprintf(status, 1 << 9, " %s", datetime);
 #endif
 
         XStoreName(dpy, DefaultRootWindow(dpy), status);
