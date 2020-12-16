@@ -7,9 +7,12 @@
 
 #define INTERVAL 10
 #define DATE_FMT "%a %b %d %Y %R"
-#ifdef BATTERY
+#ifdef LAPTOP
 #define BAT_DIR "/sys/class/power_supply/BAT0/"
 #define BAT_FILE(NAME) BAT_DIR NAME
+#define TEMP_FILE "/sys/devices/platform/coretemp.0/hwmon/hwmon8/temp1_input"
+#else
+#define TEMP_FILE "/sys/devices/platform/coretemp.0/hwmon/hwmon2/temp1_input"
 #endif
 
 static Display *dpy;
@@ -37,7 +40,6 @@ void get_datetime(char *str, size_t size)
     }
 }
 
-#ifdef BATTERY
 void read_file(char *path, char *line, size_t size)
 {
     FILE *fd;
@@ -63,6 +65,7 @@ void read_file(char *path, char *line, size_t size)
     fclose(fd);
 }
 
+#ifdef LAPTOP
 void get_battery(char *str, size_t size)
 {
     char capacity[1 << 6];
@@ -75,6 +78,17 @@ void get_battery(char *str, size_t size)
 }
 #endif
 
+void get_temp(char *str, size_t size)
+{
+    char temp[1 << 6];
+
+    read_file(TEMP_FILE, temp, 1 << 6);
+
+    double converted = atof(temp)/1000.0;
+
+    snprintf(str, size, "%.1f°C", converted);
+}
+
 int main(void)
 {
     if (!(dpy = XOpenDisplay(NULL))) {
@@ -84,20 +98,22 @@ int main(void)
 
     char status[1 << 9];
     char datetime[1 << 7];
-#ifdef BATTERY
+    char temp[1 << 7];
+#ifdef LAPTOP
     char battery[(1 << 7) + 3];
 #endif
 
     for (;;sleep(INTERVAL)) {
-#ifdef BATTERY
+#ifdef LAPTOP
         get_datetime(datetime, 1 << 7);
+        get_temp(temp, 1 << 7);
         get_battery(battery, (1 << 7) + 2);
-        snprintf(status, 1 << 9, " %s | %s", battery, datetime);
+        snprintf(status, 1 << 9, " %s | %s | %s", temp, battery, datetime);
 #else
         get_datetime(datetime, 1 << 7);
-        snprintf(status, 1 << 9, " %s", datetime);
+        get_temp(temp, 1 << 7);
+        snprintf(status, 1 << 9, " %s | %s", temp, datetime);
 #endif
-
         XStoreName(dpy, DefaultRootWindow(dpy), status);
         XSync(dpy, 0);
     }
