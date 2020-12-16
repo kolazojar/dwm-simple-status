@@ -2,18 +2,19 @@
 #include <unistd.h>
 #include <time.h>
 #include <stdlib.h>
+#include <dirent.h>
+#include <string.h>
 
 #include <X11/Xlib.h>
 
 #define INTERVAL 10
 #define DATE_FMT "%a %b %d %Y %R"
-#ifdef LAPTOP
+#ifdef BATTERY
 #define BAT_DIR "/sys/class/power_supply/BAT0/"
 #define BAT_FILE(NAME) BAT_DIR NAME
-#define TEMP_FILE "/sys/devices/platform/coretemp.0/hwmon/hwmon8/temp1_input"
-#else
-#define TEMP_FILE "/sys/devices/platform/coretemp.0/hwmon/hwmon2/temp1_input"
 #endif
+#define TEMP_FOLDER "/sys/devices/platform/coretemp.0/hwmon"
+#define TEMP_GUESS "/sys/devices/class/hwmon/hwmon0/temp1_input"
 
 static Display *dpy;
 
@@ -33,7 +34,7 @@ void get_datetime(char *str, size_t size)
         return;
     }
 
-    size_t len = strftime(str, size-1, DATE_FMT, ptm);
+    size_t len = strftime(str, size, DATE_FMT, ptm);
 
     if (len == 0) {
         *str = '\0';
@@ -45,14 +46,17 @@ void read_file(char *path, char *line, size_t size)
     FILE *fd;
 
     fd = fopen(path, "r");
+
     if (fd == NULL) {
         *line = '\0';
         return;
     }
 
-    if (fgets(line, size-1, fd) == NULL) {
+    if (fgets(line, size, fd) == NULL) {
         *line = '\0';
     }
+
+    fclose(fd);
 
     size_t i;
 
@@ -61,32 +65,61 @@ void read_file(char *path, char *line, size_t size)
     if (i > 0 && line[--i] == '\n') {
         line[i] = '\0';
     }
-
-    fclose(fd);
 }
 
-#ifdef LAPTOP
+#ifdef BATTERY
 void get_battery(char *str, size_t size)
 {
-    char capacity[1 << 6];
-    char status[1 << 6];
+    char capacity[1 << 5];
+    char status[1 << 5];
 
-    read_file(BAT_FILE("capacity"), capacity, 1 << 6);
-    read_file(BAT_FILE("status"), status, 1 << 6);
+    read_file(BAT_FILE("capacity"), capacity, 1 << 5);
+    read_file(BAT_FILE("status"), status, 1 << 5);
 
-    snprintf(str, size, "%s %s%%", status, capacity);
+    if (capacity[0] == '\0' || status[0] == '\0') {
+        *str = '\0';
+    } else {
+        snprintf(str, size, "%s %s%%", status, capacity);
+    }
 }
 #endif
 
-void get_temp(char *str, size_t size)
+void get_temp_file(char *str, size_t size)
 {
-    char temp[1 << 6];
+    DIR *d;
+    struct dirent *dir;
 
-    read_file(TEMP_FILE, temp, 1 << 6);
+    d = opendir(TEMP_FOLDER);
 
-    double converted = atof(temp)/1000.0;
+    char not_found = 1;
 
-    snprintf(str, size, "%.1f°C", converted);
+    if (d != NULL) {
+        while (((dir = readdir(d)) != NULL) && (not_found == 1)) {
+            if (strstr(dir->d_name, "hwmon") != NULL) {
+                not_found = 0;
+                break;
+            }
+        }
+    }
+
+    if (not_found == 0) {
+        snprintf(str, size, "%s/%s/temp1_input", TEMP_FOLDER, dir->d_name);
+    } else {
+        snprintf(str, size, "%s", TEMP_GUESS);
+    }
+}
+
+void get_temp(char *str, size_t size, char *temp_file)
+{
+    char temp[1 << 4];
+
+    read_file(temp_file, temp, 1 << 4);
+
+    if (temp[0] == '\0') {
+        *str = '\0';
+    } else {
+        snprintf(str, size, "%02.0f°C", atof(temp)/1000.0);
+    }
 }
 
 int main(void)
@@ -96,23 +129,26 @@ int main(void)
         return 1;
     }
 
-    char status[1 << 9];
-    char datetime[1 << 7];
-    char temp[1 << 7];
-#ifdef LAPTOP
-    char battery[(1 << 7) + 3];
+    char temp_file[1 << 8];
+    get_temp_file(temp_file, 1 << 8);
+
+    char status[1 << 8];
+    char datetime[1 << 6];
+    char temp[1 << 4];
+#ifdef BATTERY
+    char battery[1 << 7];
 #endif
 
     for (;;sleep(INTERVAL)) {
-#ifdef LAPTOP
-        get_datetime(datetime, 1 << 7);
-        get_temp(temp, 1 << 7);
-        get_battery(battery, (1 << 7) + 2);
-        snprintf(status, 1 << 9, " %s | %s | %s", temp, battery, datetime);
+#ifdef BATTERY
+        get_datetime(datetime, 1 << 6);
+        get_temp(temp, 1 << 4, temp_file);
+        get_battery(battery, 1 << 7);
+        snprintf(status, 1 << 8, " %s | %s | %s", temp, battery, datetime);
 #else
-        get_datetime(datetime, 1 << 7);
-        get_temp(temp, 1 << 7);
-        snprintf(status, 1 << 9, " %s | %s", temp, datetime);
+        get_datetime(datetime, 1 << 6);
+        get_temp(temp, 1 << 4, temp_file);
+        snprintf(status, 1 << 8, " %s | %s", temp, datetime);
 #endif
         XStoreName(dpy, DefaultRootWindow(dpy), status);
         XSync(dpy, 0);

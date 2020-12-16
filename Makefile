@@ -14,8 +14,8 @@ CFLAGS = -std=c99 -pedantic -Wall -Os ${INCS}
 LDFLAGS = ${LIBS}
 CC = cc
 
-ifeq ($(LAPTOP),1)
-	CFLAGS+=-DLAPTOP
+ifeq ($(BATTERY),1)
+	CFLAGS+=-DBATTERY
 endif
 
 all: $(NAME)
