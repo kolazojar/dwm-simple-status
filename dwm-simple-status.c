@@ -25,11 +25,7 @@
 #define BAT_FILE(NAME) BAT_DIR NAME
 #define BACKLIGHT_DIR "/sys/class/backlight/intel_backlight/"
 #define BACKLIGHT_FILE(NAME) BACKLIGHT_DIR NAME
-#else
-#define HOME "/home/matt"
 #endif
-
-static Display *dpy;
 
 void read_file(char *path, char *line, size_t size)
 {
@@ -122,21 +118,7 @@ void get_datetime(char *str, size_t size)
 {
     time_t now = time(NULL);
 
-    if (now == -1) {
-        *str = '\0';
-        return;
-    }
-
-    struct tm *ptm = localtime(&now);
-
-    if (ptm == NULL) {
-        *str = '\0';
-        return;
-    }
-
-    size_t len = strftime(str, size, DATE_FMT, ptm);
-
-    if (len == 0) {
+    if (!strftime(str, size, DATE_FMT, localtime(&now))) {
         *str = '\0';
     }
 }
@@ -180,6 +162,8 @@ void handler(int sig)
 
 int main(void)
 {
+    Display *dpy;
+
     if (!(dpy = XOpenDisplay(NULL))) {
         fputs("dwm-simple-status: cannot open display.", stderr);
         return 1;
@@ -211,14 +195,14 @@ int main(void)
         get_backlight(backlight, SBUF_SIZE);
         get_mem(mem, SBUF_SIZE);
         get_disk(disk1, SBUF_SIZE, "/");
-        snprintf(status, LBUF_SIZE, " Backlight %s | Disk %s | Memory %s | CPU %s | Battery %s | %s", backlight, disk1, mem, temp, battery, datetime);
+        snprintf(status, LBUF_SIZE, " Br %s | / %s | Mem %s | %s | %s | %s", backlight, disk1, mem, temp, battery, datetime);
 #else
         get_datetime(datetime, MBUF_SIZE);
         get_temp(temp, SBUF_SIZE, temp_file);
         get_mem(mem, SBUF_SIZE);
         get_disk(disk1, SBUF_SIZE, "/");
-        get_disk(disk2, SBUF_SIZE, HOME);
-        snprintf(status, LBUF_SIZE, " Disk / %s ~ %s | Memory %s | CPU %s | %s", disk1, disk2, mem, temp, datetime);
+        get_disk(disk2, SBUF_SIZE, "/home");
+        snprintf(status, LBUF_SIZE, " / %s /home %s | Mem %s | %s | %s", disk1, disk2, mem, temp, datetime);
 #endif
         XStoreName(dpy, DefaultRootWindow(dpy), status);
         XSync(dpy, 0);
