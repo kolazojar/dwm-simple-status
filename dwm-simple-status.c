@@ -132,6 +132,14 @@ void get_battery(char *str, size_t size)
     read_file(BAT_FILE("capacity"), capacity, SBUF_SIZE);
     read_file(BAT_FILE("status"), status, SBUF_SIZE);
 
+    size_t i;
+
+    for (i = 0; status[i] != '\0'; i++);
+
+    if (i > 3) {
+        status[3] = '\0';
+    }
+
     if (capacity[0] == '\0' || status[0] == '\0') {
         *str = '\0';
     } else {
@@ -195,14 +203,14 @@ int main(void)
         get_backlight(backlight, SBUF_SIZE);
         get_mem(mem, SBUF_SIZE);
         get_disk(disk1, SBUF_SIZE, "/");
-        snprintf(status, LBUF_SIZE, " Br %s | / %s | Mem %s | %s | %s | %s", backlight, disk1, mem, temp, battery, datetime);
+        snprintf(status, LBUF_SIZE, " Brig %s | Disk %s | Mem %s | Temp %s | Bat %s | %s", backlight, disk1, mem, temp, battery, datetime);
 #else
         get_datetime(datetime, MBUF_SIZE);
         get_temp(temp, SBUF_SIZE, temp_file);
         get_mem(mem, SBUF_SIZE);
         get_disk(disk1, SBUF_SIZE, "/");
         get_disk(disk2, SBUF_SIZE, "/home");
-        snprintf(status, LBUF_SIZE, " / %s /home %s | Mem %s | %s | %s", disk1, disk2, mem, temp, datetime);
+        snprintf(status, LBUF_SIZE, " Disk / %s /home %s | Mem %s | Temp %s | %s", disk1, disk2, mem, temp, datetime);
 #endif
         XStoreName(dpy, DefaultRootWindow(dpy), status);
         XSync(dpy, 0);
