@@ -132,18 +132,22 @@ void get_battery(char *str, size_t size)
     read_file(BAT_FILE("capacity"), capacity, SBUF_SIZE);
     read_file(BAT_FILE("status"), status, SBUF_SIZE);
 
-    size_t i;
-
-    for (i = 0; status[i] != '\0'; i++);
-
-    if (i > 3) {
-        status[3] = '\0';
-    }
-
     if (capacity[0] == '\0' || status[0] == '\0') {
         *str = '\0';
     } else {
-        snprintf(str, size, "%s %s%%", status, capacity);
+        char sym;
+
+        if (!strcmp(status, "Discharging")) {
+            sym = '-';
+        } else if (!strcmp(status, "Charging")) {
+            sym = '+';
+        } else if (!strcmp(status, "Full")) {
+            sym = '=';
+        } else {
+            sym = '?';
+        }
+
+        snprintf(str, size, "%c%s%%", sym, capacity);
     }
 }
 
