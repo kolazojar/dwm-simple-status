@@ -4,17 +4,22 @@
 #include <stdlib.h>
 #include <dirent.h>
 #include <string.h>
+#ifdef LAPTOP
+#include <signal.h>
+#endif
 
 #include <X11/Xlib.h>
 
 #define INTERVAL 10
 #define DATE_FMT "%a %b %d %Y %R"
-#ifdef BATTERY
+#define TEMP_DIR "/sys/devices/platform/coretemp.0/hwmon"
+#define TEMP_GUESS "/sys/class/hwmon/hwmon0/temp1_input"
+#ifdef LAPTOP
 #define BAT_DIR "/sys/class/power_supply/BAT0/"
 #define BAT_FILE(NAME) BAT_DIR NAME
+#define BACKLIGHT_DIR "/sys/class/backlight/intel_backlight/"
+#define BACKLIGHT_FILE(NAME) BACKLIGHT_DIR NAME
 #endif
-#define TEMP_FOLDER "/sys/devices/platform/coretemp.0/hwmon"
-#define TEMP_GUESS "/sys/devices/class/hwmon/hwmon0/temp1_input"
 
 static Display *dpy;
 
@@ -67,7 +72,7 @@ void read_file(char *path, char *line, size_t size)
     }
 }
 
-#ifdef BATTERY
+#ifdef LAPTOP
 void get_battery(char *str, size_t size)
 {
     char capacity[1 << 5];
@@ -82,6 +87,21 @@ void get_battery(char *str, size_t size)
         snprintf(str, size, "%s %s%%", status, capacity);
     }
 }
+
+void get_backlight(char *str, size_t size)
+{
+    char current[1 << 5];
+    char max[1 << 5];
+
+    read_file(BACKLIGHT_FILE("actual_brightness"), current, 1 << 5);
+    read_file(BACKLIGHT_FILE("max_brightness"), max, 1 << 5);
+
+    if (current[0] == '\0' || max[0] == '\0') {
+        *str = '\0';
+    } else {
+        snprintf(str, size, "Backlight %02.0f%%", atof(current)/atof(max)*100);
+    }
+}
 #endif
 
 void get_temp_file(char *str, size_t size)
@@ -89,7 +109,7 @@ void get_temp_file(char *str, size_t size)
     DIR *d;
     struct dirent *dir;
 
-    d = opendir(TEMP_FOLDER);
+    d = opendir(TEMP_DIR);
 
     char not_found = 1;
 
@@ -103,7 +123,7 @@ void get_temp_file(char *str, size_t size)
     }
 
     if (not_found == 0) {
-        snprintf(str, size, "%s/%s/temp1_input", TEMP_FOLDER, dir->d_name);
+        snprintf(str, size, "%s/%s/temp1_input", TEMP_DIR, dir->d_name);
     } else {
         snprintf(str, size, "%s", TEMP_GUESS);
     }
@@ -118,9 +138,16 @@ void get_temp(char *str, size_t size, char *temp_file)
     if (temp[0] == '\0') {
         *str = '\0';
     } else {
-        snprintf(str, size, "%02.0f°C", atof(temp)/1000.0);
+        snprintf(str, size, "CPU %02.0f°C", atof(temp)/1000.0);
     }
 }
+
+#ifdef LAPTOP
+void handler(int sig)
+{
+    signal(SIGINT, handler);
+}
+#endif
 
 int main(void)
 {
@@ -132,23 +159,26 @@ int main(void)
     char temp_file[1 << 8];
     get_temp_file(temp_file, 1 << 8);
 
-    char status[1 << 8];
+    char status[1 << 9];
     char datetime[1 << 6];
     char temp[1 << 4];
-#ifdef BATTERY
+#ifdef LAPTOP
+    char backlight[1 << 7];
     char battery[1 << 7];
+    signal(SIGINT, handler);
 #endif
 
     for (;;sleep(INTERVAL)) {
-#ifdef BATTERY
+#ifdef LAPTOP
         get_datetime(datetime, 1 << 6);
         get_temp(temp, 1 << 4, temp_file);
         get_battery(battery, 1 << 7);
-        snprintf(status, 1 << 8, " %s | %s | %s", temp, battery, datetime);
+        get_backlight(backlight, 1 << 7);
+        snprintf(status, 1 << 9, " %s | %s | %s | %s", backlight, temp, battery, datetime);
 #else
         get_datetime(datetime, 1 << 6);
         get_temp(temp, 1 << 4, temp_file);
-        snprintf(status, 1 << 8, " %s | %s", temp, datetime);
+        snprintf(status, 1 << 9, " %s | %s", temp, datetime);
 #endif
         XStoreName(dpy, DefaultRootWindow(dpy), status);
         XSync(dpy, 0);
