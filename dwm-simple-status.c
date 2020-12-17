@@ -168,7 +168,7 @@ void get_backlight(char *str, size_t size)
 
 void handler(int sig)
 {
-    signal(SIGINT, handler);
+    signal(SIGUSR1, handler);
 }
 #endif
 
@@ -196,7 +196,7 @@ int main(void)
     char backlight[SBUF_SIZE];
     char battery[MBUF_SIZE];
 
-    signal(SIGINT, handler);
+    signal(SIGUSR1, handler);
 #endif
 
     for (;;sleep(INTERVAL)) {
