@@ -194,7 +194,7 @@ int main(void)
 #endif
 #ifdef LAPTOP
     char backlight[SBUF_SIZE];
-    char battery[MBUF_SIZE];
+    char battery[SBUF_SIZE];
 
     signal(SIGUSR1, handler);
 #endif
@@ -203,7 +203,7 @@ int main(void)
 #ifdef LAPTOP
         get_datetime(datetime, MBUF_SIZE);
         get_temp(temp, SBUF_SIZE, temp_file);
-        get_battery(battery, MBUF_SIZE);
+        get_battery(battery, SBUF_SIZE);
         get_backlight(backlight, SBUF_SIZE);
         get_mem(mem, SBUF_SIZE);
         get_disk(disk1, SBUF_SIZE, "/");
