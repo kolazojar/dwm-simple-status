@@ -6,8 +6,8 @@
 #include <string.h>
 #include <X11/Xlib.h>
 
-#define INTERVAL 10
-#define DATE_FMT "%a %b %d %Y %R"
+#define INTERVAL 1
+#define DATE_FMT "%a %b %d %T"
 #define SBUF_SIZE (1 << 4)
 #define MBUF_SIZE (1 << 6)
 #define LBUF_SIZE (1 << 8)
